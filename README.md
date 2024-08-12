@@ -9,7 +9,7 @@ https://courses.dometrain.com/courses/take/from-zero-to-hero-kubernetes-for-deve
 2. Install the **Kubernetes** extension for Visual Studio Code.
 
 ### Docker Desktop
-Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) as it is needed for the Kind tool explained in the next section.
+Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) and ensure it is running as it is needed for the Kind tool explained in the next section.
 
 ### kind
 `kind` is a tool for running local Kubernetes clusters using Docker container “nodes”.
