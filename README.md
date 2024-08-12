@@ -15,8 +15,7 @@ Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install
 `kind` is a tool for running local Kubernetes clusters using Docker container “nodes”.
 kind was primarily designed for testing Kubernetes itself, but may be used for local development or CI.
 
-1. Install [kind](https://kind.sigs.k8s.io/).
-2. Add the folder containing `kind.exe` to your system's `PATH` environment variable.
+Install [kind](https://kind.sigs.k8s.io/).
 
 ### kubectl
 You shouldn't need to install `kubectl` as it is installed by Docker Desktop.
