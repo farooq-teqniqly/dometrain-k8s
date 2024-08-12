@@ -1,0 +1,29 @@
+# Ignore build artifacts
+bin/
+obj/
+
+# Ignore NuGet packages
+*.nupkg
+
+# Ignore Visual Studio files
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# Ignore Docker-related files
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore node_modules folder (if using npm)
+node_modules/
+
+# Ignore packages folder (if using yarn)
+packages/
+
+# Ignore any other files or folders you don't want to include in the Docker image
