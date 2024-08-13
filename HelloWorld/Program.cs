@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using System.Collections;
+using Microsoft.Extensions.Configuration;
 
 namespace HelloWorld
 {
@@ -20,6 +21,13 @@ namespace HelloWorld
                 .WriteTo
                 .Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties}{NewLine}{Exception}")
                 .CreateLogger();
+
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
+
+            Log.Information($"API key: {config["ApiKey"]}");
 
             Log.Information("Hello, World!");
 

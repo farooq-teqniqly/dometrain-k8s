@@ -19,6 +19,7 @@ spec:
           containers:
             - name: hello-world-k8s-app
               image: teqniqly/hello-world:k8s
+              imagePullPolicy: Always
               command: ["dotnet", "HelloWorld.dll"]
               resources:
                 requests:
