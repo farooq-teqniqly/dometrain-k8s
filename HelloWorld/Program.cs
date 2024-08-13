@@ -1,5 +1,4 @@
 ﻿using Serilog;
-using System.Collections;
 using Microsoft.Extensions.Configuration;
 
 namespace HelloWorld
@@ -22,12 +21,11 @@ namespace HelloWorld
                 .Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties}{NewLine}{Exception}")
                 .CreateLogger();
 
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false)
-                .Build();
-
-            Log.Information($"API key: {config["ApiKey"]}");
+            new ConfigurationBuilder()
+                 .SetBasePath(Directory.GetCurrentDirectory())
+                 .AddJsonFile("appsettings.json", optional: false)
+                 .AddEnvironmentVariables()
+                 .Build();
 
             Log.Information("Hello, World!");
 
@@ -40,8 +38,6 @@ namespace HelloWorld
             var exitCode = 0;
 
             Log.Information("Exiting with code {ExitCode}", exitCode);
-
-
 
             return exitCode;
         }

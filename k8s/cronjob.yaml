@@ -4,6 +4,28 @@ metadata:
   name: hello-world-k8s
 
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-config
+  namespace: hello-world-k8s
+data:
+  appsettings.json: |
+    {
+        "ApiKey": "<API_KEY_PLACEHOLDER>"
+    }
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hello-world-secret
+  namespace: hello-world-k8s
+type: Opaque
+data:
+  ApiKey: <BASE_64_ENCODED_API_KEY>
+
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -16,11 +38,25 @@ spec:
       backoffLimit: 0
       template:
         spec:
+          volumes:
+            - name: appsettings-volume
+              configMap:
+                name: hello-world-config
           containers:
             - name: hello-world-k8s-app
               image: teqniqly/hello-world:k8s
               imagePullPolicy: Always
               command: ["dotnet", "HelloWorld.dll"]
+              env:
+                - name: ApiKey
+                  valueFrom:
+                    secretKeyRef:
+                      name: hello-world-secret
+                      key: ApiKey
+              volumeMounts:
+                - name: appsettings-volume
+                  mountPath: /app/appsettings.json
+                  subPath: appsettings.json
               resources:
                 requests:
                   memory: "16Mi"
