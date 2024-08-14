@@ -10,9 +10,11 @@ metadata:
   name: hello-world-config
   namespace: hello-world-k8s
 data:
+  ApiBaseAddress: "https://api.openweathermap.org"
   appsettings.json: |
     {
-        "ApiKey": "<API_KEY_PLACEHOLDER>"
+        "ApiKey": "<API_KEY_PLACEHOLDER>",
+        "ApiBaseAddress": "https://api.openweathermap.org"
     }
 
 ---
@@ -23,7 +25,7 @@ metadata:
   namespace: hello-world-k8s
 type: Opaque
 data:
-  ApiKey: <BASE_64_ENCODED_API_KEY>
+  ApiKey: <BASE64_ENCODED_API_KEY>
 
 ---
 apiVersion: batch/v1
@@ -53,6 +55,11 @@ spec:
                     secretKeyRef:
                       name: hello-world-secret
                       key: ApiKey
+                - name: ApiBaseAddress
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hello-world-config
+                      key: ApiBaseAddress
               volumeMounts:
                 - name: appsettings-volume
                   mountPath: /app/appsettings.json
