@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -15,10 +16,11 @@ namespace HelloWorld
 
         static async Task<int> Main()
         {
-
             var exitCode = 0;
 
             var builder = Host.CreateApplicationBuilder();
+
+            builder.Configuration.AddUserSecrets<Program>();
 
             Log.Logger = new LoggerConfiguration()
                 .Enrich.FromLogContext()
