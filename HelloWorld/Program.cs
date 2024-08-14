@@ -18,53 +18,74 @@ namespace HelloWorld
         {
             var exitCode = 0;
 
-            var builder = Host.CreateApplicationBuilder();
-
-            builder.Configuration.AddUserSecrets<Program>();
-
-            Log.Logger = new LoggerConfiguration()
-                .Enrich.FromLogContext()
-                .Enrich.WithMachineName()
-                .Enrich.WithThreadId()
-                .Enrich.WithProcessName()
-                .WriteTo
-                .Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties}{NewLine}{Exception}")
-                .CreateLogger();
-
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSerilog(Log.Logger);
-
-            var apiBaseAddress = new Uri(builder.Configuration["ApiBaseAddress"]!);
-
-            builder.Services.AddHttpClient("geoCode", (client) =>
+            try
             {
-                client.BaseAddress = new Uri(apiBaseAddress, "geo/1.0/direct");
-            }).AddStandardResilienceHandler();
+                var builder = Host.CreateApplicationBuilder();
 
-            builder.Services.AddHttpClient("weather", (client) =>
+                builder.Configuration.AddUserSecrets<Program>();
+
+                Log.Logger = new LoggerConfiguration()
+                    .Enrich.FromLogContext()
+                    .Enrich.WithMachineName()
+                    .Enrich.WithThreadId()
+                    .Enrich.WithProcessName()
+                    .WriteTo
+                    .Console(
+                        outputTemplate:
+                        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties}{NewLine}{Exception}")
+                    .CreateLogger();
+
+                builder.Logging.ClearProviders();
+                builder.Logging.AddSerilog(Log.Logger);
+
+                var apiBaseAddress = new Uri(builder.Configuration["ApiBaseAddress"]!);
+
+                builder.Services
+                    .AddHttpClient("geoCode",
+                        (client) => { client.BaseAddress = new Uri(apiBaseAddress, "geo/1.0/direct"); })
+                    .AddStandardResilienceHandler();
+
+                builder.Services
+                    .AddHttpClient("weather",
+                        (client) => { client.BaseAddress = new Uri(apiBaseAddress, "data/2.5/weather"); })
+                    .AddStandardResilienceHandler();
+
+                var apiKey = builder.Configuration["ApiKey"]!;
+
+                using (var host = builder.Build())
+                {
+                    var httpClientFactory = host.Services.GetRequiredService<IHttpClientFactory>();
+
+                    var location = "Seattle,WA,USA";
+
+                    Log.Information("Getting geo code for {@Location}...", location);
+
+                    var (lat, lon) = await GetGeoCode(location, httpClientFactory, apiKey);
+
+                    Log.Information("Geo code is {@GeoCode}", $"({lat},{lon})");
+
+                    Log.Information("Getting weather for {@Location}...", location);
+
+                    var (temp, description) = await GetWeather((lat, lon), httpClientFactory, apiKey);
+
+                    Log.Information("Weather is {@Temp} {@Description}", temp, description);
+                }
+            }
+            catch (HttpRequestException httpRequestException)
             {
-                client.BaseAddress = new Uri(apiBaseAddress, "data/2.5/weather");
-            }).AddStandardResilienceHandler();
+                Log.Error(
+                    httpRequestException,
+                    "An HTTP error occurred.");
 
-            var apiKey = builder.Configuration["ApiKey"]!;
-
-            using (var host = builder.Build())
+                exitCode = -1;
+            }
+            catch (Exception exception)
             {
-                var httpClientFactory = host.Services.GetRequiredService<IHttpClientFactory>();
+                Log.Error(
+                    exception,
+                    "An application error occurred.");
 
-                var location = "Seattle,WA,USA";
-
-                Log.Information("Getting geo code for {@Location}...", location);
-
-                var (lat, lon) = await GetGeoCode(location, httpClientFactory, apiKey);
-
-                Log.Information("Geo code is {@GeoCode}", $"({lat},{lon})");
-
-                Log.Information("Getting weather for {@Location}...", location);
-
-                var (temp, description) = await GetWeather((lat, lon), httpClientFactory, apiKey);
-
-                Log.Information("Weather is {@Temp} {@Description}", temp, description);
+                exitCode = -1;
             }
 
             Log.Information("Exiting with code {@ExitCode}", exitCode);
