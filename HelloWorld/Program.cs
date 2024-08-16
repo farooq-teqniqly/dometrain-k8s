@@ -25,14 +25,7 @@ namespace HelloWorld
                 builder.Configuration.AddUserSecrets<Program>();
 
                 Log.Logger = new LoggerConfiguration()
-                    .Enrich.FromLogContext()
-                    .Enrich.WithMachineName()
-                    .Enrich.WithThreadId()
-                    .Enrich.WithProcessName()
-                    .WriteTo
-                    .Console(
-                        outputTemplate:
-                        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties}{NewLine}{Exception}")
+                    .ReadFrom.Configuration(builder.Configuration)
                     .CreateLogger();
 
                 builder.Logging.ClearProviders();
