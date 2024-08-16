@@ -1,36 +1,76 @@
-﻿using Serilog;
+﻿using System.Diagnostics;
 using System.Text.Json;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Serilog.Templates.Themes;
-using SerilogTracing.Expressions;
-using SerilogTracing;
-using Serilog.Events;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace HelloWorld
 {
     internal class Program
     {
+        private const int ExitFail = -1;
+        private const int ExitSuccess = 0;
+
         protected Program()
         {
 
         }
 
-        static async Task Main()
+        static async Task<int> Main()
         {
+            var exitCode = ExitFail;
             var builder = Host.CreateApplicationBuilder();
 
             builder.Configuration.AddUserSecrets<Program>();
 
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
-                .ReadFrom.Configuration(builder.Configuration)
-                .CreateLogger();
+            var activitySource = new ActivitySource("Teqniqly.HelloWorld.K8S");
 
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSerilog(Log.Logger);
+            var resourceAttributes = new Dictionary<string, object>
+            {
+                { "service.name", activitySource.Name },
+                { "service.instance.id", activitySource.Name }
+            };
+
+            var resourceBuilder = ResourceBuilder.CreateDefault().AddAttributes(resourceAttributes);
+
+            var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(activitySource.Name)
+                .AddHttpClientInstrumentation()
+                .AddAzureMonitorTraceExporter(options =>
+                {
+                    options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]!;
+                })
+                .Build();
+
+
+            var meterProvider = Sdk.CreateMeterProviderBuilder()
+                .AddHttpClientInstrumentation()
+                .AddAzureMonitorMetricExporter(options =>
+                {
+                    options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]!;
+                })
+                .Build();
+
+
+            var loggerFactory = LoggerFactory.Create(loggingBuilder =>
+            {
+                loggingBuilder.AddOpenTelemetry(o => o.AddAzureMonitorLogExporter(
+                    options =>
+                    {
+                        options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]!;
+                    })
+                    .SetResourceBuilder(resourceBuilder));
+
+                loggingBuilder.AddConsole();
+            });
+
+            var logger = loggerFactory.CreateLogger<Program>();
 
             var apiBaseAddress = new Uri(builder.Configuration["ApiBaseAddress"]!);
 
@@ -46,10 +86,8 @@ namespace HelloWorld
 
             var apiKey = builder.Configuration["ApiKey"]!;
 
-            using (new ActivityListenerConfiguration().TraceToSharedLogger())
+            using (var activity = activitySource.StartActivity(ActivityKind.Server))
             {
-                using (var activity = Log.Logger.StartActivity("Get weather flow."))
-                {
                     try
                     {
                         using (var host = builder.Build())
@@ -59,49 +97,46 @@ namespace HelloWorld
 
                                 var location = "Seattle,WA,USA";
 
-                                Log.Information("Getting geo code for {@Location}...", location);
+                                logger.LogInformation("Getting geo code for {@Location}...", location);
 
                                 var (lat, lon) = await GetGeoCode(location, httpClientFactory, apiKey);
 
-                                Log.Information("Geo code is {@GeoCode}", $"({lat},{lon})");
+                                logger.LogInformation("Geo code is {@GeoCode}", $"({lat},{lon})");
 
-                                Log.Information("Getting weather for {@Location}...", location);
+                                logger.LogInformation("Getting weather for {@Location}...", location);
 
                                 var (temp, description) = await GetWeather((lat, lon), httpClientFactory, apiKey);
 
-                                Log.Information("Weather is {@Temp} {@Description}", temp, description);
+                                logger.LogInformation("Weather is {@Temp} {@Description}", temp, description);
 
-                                activity.Complete();
+                                exitCode = ExitSuccess;
                             }
                         }
                     }
                     catch (HttpRequestException httpRequestException)
                     {
-                        activity.Complete(LogEventLevel.Error, httpRequestException);
-
-                        Log.Error(
+                    
+                        logger.LogError(
                             httpRequestException,
                             "An HTTP error occurred.");
-
-                        throw;
 
                     }
                     catch (Exception exception)
                     {
-                        activity.Complete(LogEventLevel.Error, exception);
-
-                        Log.Error(
+                        logger.LogError(
                             exception,
                             "An application error occurred.");
-
-                        throw;
                     }
                     finally
                     {
-                        await Log.CloseAndFlushAsync();
+                        tracerProvider.Dispose();
+                        meterProvider.Dispose();
+                        loggerFactory.Dispose();
                     }
-                }
+                
             }
+
+            return exitCode;
         }
 
         private static async Task<(double temp, string description)> GetWeather(
