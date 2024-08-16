@@ -13,7 +13,29 @@ data:
   appsettings.json: |
     {
       "ApiBaseAddress": "https://api.openweathermap.org",
-      "ApiKey": "<API_KEY_PLACEHOLDER>"
+      "ApiKey": "<API_KEY_PLACEHOLDER>",
+      "Serilog": {
+    "MinimumLevel": {
+        "Default": "Information"
+    },
+    "WriteTo": [
+        {
+            "Name": "Console",
+            "Args": {
+                "formatter": "Serilog.Formatting.Compact.RenderedCompactJsonFormatter, Serilog.Formatting.Compact"
+            }
+        }
+    ],
+    "Enrich": [
+        "FromLogContext",
+        "WithMachineName",
+        "WithThreadId",
+        "WithProcessName"
+    ],
+    "Properties": {
+        "Application": "K8S Hello World .NET App"
+    }
+    }
     }
 
 ---
