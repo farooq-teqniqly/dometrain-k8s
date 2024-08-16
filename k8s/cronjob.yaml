@@ -10,7 +10,11 @@ metadata:
   name: hello-world-config
   namespace: hello-world-k8s
 data:
-  ApiBaseAddress: "https://api.openweathermap.org"
+  appsettings.json: |
+    {
+      "ApiBaseAddress": "https://api.openweathermap.org",
+      "ApiKey": "<API_KEY_PLACEHOLDER>"
+    }
 
 ---
 apiVersion: v1
@@ -46,11 +50,10 @@ spec:
                     secretKeyRef:
                       name: hello-world-secret
                       key: ApiKey
-                - name: ApiBaseAddress
-                  valueFrom:
-                    configMapKeyRef:
-                      name: hello-world-config
-                      key: ApiBaseAddress
+              volumeMounts:
+                - name: config-volume
+                  mountPath: /app/appsettings.json
+                  subPath: appsettings.json
               resources:
                 requests:
                   memory: "16Mi"
@@ -58,4 +61,8 @@ spec:
                 limits:
                   memory: "64Mi"
                   cpu: "200m"
+          volumes:
+            - name: config-volume
+              configMap:
+                name: hello-world-config
           restartPolicy: Never
